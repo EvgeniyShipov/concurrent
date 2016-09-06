@@ -2,13 +2,10 @@ package ru.sbt.concurrent;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class FixedThreadPool implements ThreadPool {
 
     private final BlockingQueue<Runnable> tasks = new LinkedBlockingQueue<>();
-    private final Lock lock = new ReentrantLock();
     private final int threadCount;
 
     public FixedThreadPool(int threadCount) {
@@ -24,24 +21,17 @@ public class FixedThreadPool implements ThreadPool {
 
     @Override
     public void execute(Runnable runnable) {
-        lock.lock();
-        try {
-            tasks.add(runnable);
-        } finally {
-            lock.unlock();
-        }
+        tasks.add(runnable);
     }
 
     public class Worker extends Thread {
         @Override
         public void run() {
             while (true) {
-                lock.lock();
                 try {
-                    Runnable poll = tasks.poll();
-                    poll.run();
-                } finally {
-                    lock.unlock();
+                    tasks.take().run();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
